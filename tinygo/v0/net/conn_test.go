@@ -9,7 +9,7 @@ import (
 	"testing"
 	"time"
 
-	v0net "github.com/gaukas/watm/v0/net"
+	v0net "github.com/gaukas/watm/tinygo/v0/net"
 )
 
 func tcpConnPair() (*net.TCPConn, *net.TCPConn, error) {
@@ -65,7 +65,13 @@ func TestTCPConn_Read(t *testing.T) {
 	}
 
 	if !bytes.Equal(bufRd[:n], msgWr) {
-		t.Fatalf("expected %s, got %s", msgWr, bufRd[:n])
+		t.Fatalf("read: expected %s, got %s", msgWr, bufRd[:n])
+	}
+
+	// close the peer connection and read again
+	conn1.Close()
+	if _, err := tcpConn2.Read(bufRd); err == nil {
+		t.Fatal("read after peer-close: expected error, got nil")
 	}
 
 	runtime.KeepAlive(conn1)
@@ -145,9 +151,11 @@ func TestTCPConn_Close(t *testing.T) {
 		t.Fatal("expected error, got nil")
 	}
 
-	// Similarly, both conn1 and conn2 should not be readable
+	// Similarly, all tcpConn1, conn1 and conn2 should not be readable
 	var bufRd = make([]byte, 16)
-	if _, err := conn1.Read(bufRd); err == nil {
+	if _, err := tcpConn1.Read(bufRd); err == nil {
+		t.Fatal("expected error, got nil")
+	} else if _, err := conn1.Read(bufRd); err == nil {
 		t.Fatal("expected error, got nil")
 	} else if _, err := conn2.Read(bufRd); err == nil {
 		t.Fatal("expected error, got nil")

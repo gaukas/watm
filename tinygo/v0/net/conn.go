@@ -2,12 +2,14 @@ package net
 
 import (
 	"errors"
+	"io"
 	"net"
 	"os"
 	"syscall"
 	"time"
 )
 
+// Conn is the interface for a generic stream-oriented network connection.
 type Conn interface {
 	net.Conn
 	syscall.Conn
@@ -43,14 +45,22 @@ func (c *TCPConn) Read(b []byte) (n int, err error) {
 		// if no deadline set, behavior depends on blocking mode of the
 		// underlying file descriptor.
 		return syscallFnFd(c.rawConn, func(fd uintptr) (int, error) {
-			return syscall.Read(int(fd), b)
+			n, err := syscall.Read(int(fd), b)
+			if n == 0 && err == nil {
+				err = io.EOF
+			}
+			return n, err
 		})
 	} else {
 		// readDeadline is set, if EAGAIN/EWOULDBLOCK is returned,
 		// we retry until the deadline is reached.
 		for {
 			if n, err = syscallFnFd(c.rawConn, func(fd uintptr) (int, error) {
-				return syscall.Read(int(fd), b)
+				n, err := syscall.Read(int(fd), b)
+				if n == 0 && err == nil {
+					err = io.EOF
+				}
+				return n, err
 			}); errors.Is(err, syscall.EAGAIN) || errors.Is(err, syscall.EWOULDBLOCK) {
 				if time.Now().Before(rdl) {
 					continue
