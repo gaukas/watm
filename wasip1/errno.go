@@ -17,7 +17,7 @@ type errno syscall.Errno
 // or a success code (positive). In case of a success code, it
 // returns the code itself and a nil error.
 func DecodeWATERError(errorCode int32) (n int32, err error) {
-	if errorCode > 0 {
+	if errorCode >= 0 {
 		n = errorCode // such that when error code is 0, it will return 0, nil
 	} else {
 		errorCode = -errorCode // flip the sign
@@ -35,6 +35,10 @@ func DecodeWATERError(errorCode int32) (n int32, err error) {
 }
 
 func EncodeWATERError(errno syscall.Errno) int32 {
+	if errno == 0 {
+		return 0
+	}
+
 	// first find the corresponding Errno (there might
 	// be missing Errno in the map, which means they
 	// are not supported)
