@@ -1,8 +1,11 @@
+//go:build !wasip1 && !wasi
+
 package net_test
 
 import (
 	"bytes"
 	"errors"
+	"io"
 	"net"
 	"runtime"
 	"syscall"
@@ -157,8 +160,8 @@ func TestTCPConn_Close(t *testing.T) {
 		t.Fatal("expected error, got nil")
 	} else if _, err := conn1.Read(bufRd); err == nil {
 		t.Fatal("expected error, got nil")
-	} else if _, err := conn2.Read(bufRd); err == nil {
-		t.Fatal("expected error, got nil")
+	} else if _, err := conn2.Read(bufRd); !errors.Is(err, io.EOF) && !errors.Is(err, syscall.ECONNRESET) {
+		t.Fatalf("expected io.EOF or syscall.ECONNRESET, got %v", err)
 	}
 
 	runtime.KeepAlive(conn1)

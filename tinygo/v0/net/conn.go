@@ -14,6 +14,7 @@ type Conn interface {
 	net.Conn
 	syscall.Conn
 	SetNonBlock(nonblocking bool) error
+	Fd() int32
 }
 
 // type guard: *TCPConn must implement Conn
@@ -61,7 +62,7 @@ func (c *TCPConn) Read(b []byte) (n int, err error) {
 					err = io.EOF
 				}
 				return n, err
-			}); errors.Is(err, syscall.EAGAIN) || errors.Is(err, syscall.EWOULDBLOCK) {
+			}); errors.Is(err, syscall.EAGAIN) {
 				if time.Now().Before(rdl) {
 					continue
 				}
@@ -84,7 +85,7 @@ func (c *TCPConn) Write(b []byte) (n int, writeErr error) {
 		// we retry until the deadline is reached.
 		if err := c.rawConn.Write(func(fd uintptr) (done bool) {
 			n, writeErr = syscall.Write(int(fd), b)
-			if errors.Is(writeErr, syscall.EAGAIN) || errors.Is(writeErr, syscall.EWOULDBLOCK) {
+			if errors.Is(writeErr, syscall.EAGAIN) {
 				if time.Now().Before(wdl) {
 					return false
 				}
@@ -100,15 +101,18 @@ func (c *TCPConn) Write(b []byte) (n int, writeErr error) {
 
 // Close implements [net.Conn.Close].
 func (c *TCPConn) Close() error {
-	if shutdownErr := syscallControlFd(c.rawConn, func(fd uintptr) error {
-		return syscall.Shutdown(int(fd), syscall.SHUT_RDWR)
-	}); shutdownErr != nil {
-		return shutdownErr
-	} else {
-		return syscallControlFd(c.rawConn, func(fd uintptr) error {
-			return syscall.Close(int(fd))
-		})
-	}
+	// if shutdownErr := syscallControlFd(c.rawConn, func(fd uintptr) error {
+	// 	return syscall.Shutdown(int(fd), syscall.SHUT_RDWR)
+	// }); shutdownErr != nil {
+	// 	return shutdownErr
+	// } else {
+	// 	return syscallControlFd(c.rawConn, func(fd uintptr) error {
+	// 		return syscall.Close(int(fd))
+	// 	})
+	// }
+	return syscallControlFd(c.rawConn, func(fd uintptr) error {
+		return syscall.Close(int(fd))
+	})
 }
 
 // LocalAddr implements [net.Conn.LocalAddr].
@@ -161,8 +165,17 @@ func (c *TCPConn) SyscallConn() (syscall.RawConn, error) {
 // SetNonBlock sets the socket to blocking or non-blocking mode.
 func (c *TCPConn) SetNonBlock(nonblocking bool) error {
 	return syscallControlFd(c.rawConn, func(fd uintptr) error {
-		return syscall.SetNonblock(int(fd), nonblocking)
+		if errno := syscallSetNonblock(fd, nonblocking); errno != nil && !errors.Is(errno, syscall.Errno(0)) {
+			return errno
+		} else {
+			return nil
+		}
 	})
+}
+
+// Fd returns the file descriptor of the socket.
+func (c *TCPConn) Fd() int32 {
+	return c.rawConn.fd
 }
 
 // type guard: *rawTCPConn must implement [syscall.RawConn].

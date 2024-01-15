@@ -1,11 +1,15 @@
 package net
 
-import "syscall"
+import (
+	"fmt"
+	"syscall"
+)
 
 func syscallControlFd(rawConn syscall.RawConn, f func(fd uintptr) error) (err error) {
 	if controlErr := rawConn.Control(func(fd uintptr) {
 		err = f(fd)
 	}); controlErr != nil {
+		panic(fmt.Sprintf("controlErr = %v", controlErr))
 		return controlErr
 	}
 	return err
