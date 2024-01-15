@@ -1,6 +1,8 @@
 package addon
 
-import "fmt"
+import (
+	"fmt"
+)
 
 var username string = "anonymous"
 
