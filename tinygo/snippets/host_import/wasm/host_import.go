@@ -1,3 +1,5 @@
+//go:build wasip1 || wasi
+
 package main
 
 // Import from host.

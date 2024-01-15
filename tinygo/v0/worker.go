@@ -216,12 +216,12 @@ func copyOnce(dstName, srcName string, dst, src net.Conn, buf []byte) error {
 
 		writeN, writeErr := dst.Write(buf[:readN])
 		if writeErr != nil {
-			log.Println("worker: copyOnce: %s.Write:", dstName, writeErr)
+			log.Printf("worker: copyOnce: %s.Write: %v", dstName, writeErr)
 			return syscall.EIO // no matter input/output error or EAGAIN we cannot retry async write yet
 		}
 
 		if readN != writeN {
-			log.Println("worker: copyOnce: %s.read != %s.written", srcName, dstName)
+			log.Printf("worker: copyOnce: %s.read != %s.written", srcName, dstName)
 			return syscall.EIO // input/output error
 		}
 	}

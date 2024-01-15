@@ -1,3 +1,5 @@
+//go:build wasip1 || wasi
+
 package addon
 
 // Imports a few functions from host

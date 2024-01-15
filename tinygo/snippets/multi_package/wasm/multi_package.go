@@ -1,3 +1,5 @@
+//go:build wasip1 || wasi
+
 package main
 
 import "github.com/gaukas/watm/tinygo/snippets/multi_package/addon"
