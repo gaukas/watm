@@ -86,6 +86,8 @@ func untilError(f func() error) error {
 // connection is not properly set to non-blocking mode, i.e., never returns
 // EAGAIN, this function will block forever and never work on a lower priority
 // connection. Thus it is called unfairPoll.
+//
+// TODO: use poll_oneoff instead of busy polling
 func unfairPoll() int32 {
 	var readBuf []byte = make([]byte, 65536)
 	for {
@@ -164,6 +166,8 @@ func unfairPoll() int32 {
 // But different from unfairPoll, fairPoll spend equal amount of turns on each connection
 // for calling Read. Therefore it has a better fairness than unfairPoll, which may still
 // make progress if one of the connection is not properly set to non-blocking mode.
+//
+// TODO: use poll_oneoff instead of busy polling
 func fairPoll() int32 {
 	var readBuf []byte = make([]byte, 65536)
 	for {
