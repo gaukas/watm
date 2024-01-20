@@ -1,6 +1,10 @@
+//go:build wasip1 || wasi
+
 package addon
 
-import "fmt"
+import (
+	"fmt"
+)
 
 var username string = "anonymous"
 

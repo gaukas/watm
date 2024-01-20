@@ -1,3 +1,5 @@
+//go:build !wasip1 && !wasi
+
 package main
 
 import (
@@ -57,5 +59,13 @@ func main() {
 
 	if _, err := multiPackage.ExportedFunction("stop").Call(ctx); err != nil {
 		panic(err)
+	}
+
+	// show all imports and exports
+	if cm, err := r.CompileModule(ctx, multiPackageWasm); err != nil {
+		panic(err)
+	} else {
+		fmt.Printf("imports: %v\n", cm.AllImports())
+		fmt.Printf("exports: %v\n", cm.AllExports())
 	}
 }

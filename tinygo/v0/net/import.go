@@ -1,10 +1,10 @@
-//go:build !wasip1
+//go:build !wasip1 && !wasi
 
 package net
 
 var hostDialedFD int32 = -1
 
-func setHostDialedFD(fd int32) {
+func SetHostDialedFD(fd int32) {
 	hostDialedFD = fd
 }
 
@@ -17,7 +17,7 @@ func _import_host_dial() (fd int32) {
 
 var hostAcceptedFD int32 = -1
 
-func setHostAcceptedFD(fd int32) {
+func SetHostAcceptedFD(fd int32) {
 	hostAcceptedFD = fd
 }
 
