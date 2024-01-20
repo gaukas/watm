@@ -8,9 +8,16 @@ import (
 	"github.com/gaukas/watm/wasip1"
 )
 
+type RelayWrapSelection bool
+
+const (
+	RelayWrapRemote RelayWrapSelection = false
+	RelayWrapSource RelayWrapSelection = true
+)
+
 type relay struct {
-	wt          WrappingTransport
-	reverseWrap bool
+	wt            WrappingTransport
+	wrapSelection RelayWrapSelection
 	// lt ListeningTransport
 	// dt DialingTransport
 }
@@ -51,12 +58,13 @@ var r relay
 // The caller MUST keep in mind that the [WrappingTransport] is
 // used to wrap the connection to the remote address, not the
 // connection from the source address (the dialing peer).
-// To reverse this behavior, set [reverseWrap] to true.
+// To reverse this behavior, i.e., wrap the inbounding connection,
+// set wrapSelection to [RelayWrapSource].
 //
 // Mutually exclusive with [BuildRelayWithListeningDialingTransport].
-func BuildRelayWithWrappingTransport(wt WrappingTransport, reverseWrap bool) {
+func BuildRelayWithWrappingTransport(wt WrappingTransport, wrapSelection RelayWrapSelection) {
 	r.wt = wt
-	r.reverseWrap = reverseWrap
+	r.wrapSelection = wrapSelection
 	// r.lt = nil
 	// r.dt = nil
 }
@@ -98,7 +106,7 @@ func _water_associate() int32 {
 			return wasip1.EncodeWATERError(err.(syscall.Errno))
 		}
 
-		if !r.reverseWrap {
+		if r.wrapSelection == RelayWrapRemote {
 			// wrap remoteConn
 			remoteConn, err = r.wt.Wrap(remoteConn.(*v0net.TCPConn))
 			// set sourceConn, the not-wrapped one, to non-blocking mode

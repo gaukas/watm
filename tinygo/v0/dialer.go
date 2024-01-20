@@ -40,7 +40,7 @@ var d dialer
 // another [net.Conn] by providing some high-level application
 // layer protocol.
 //
-// Mutually exclusive with [BuildDialerWithDialerTransport].
+// Mutually exclusive with [BuildDialerWithDialingTransport].
 func BuildDialerWithWrappingTransport(wt WrappingTransport) {
 	d.wt = wt
 	// d.dt = nil
