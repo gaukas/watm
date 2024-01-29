@@ -1,8 +1,6 @@
 package main
 
 import (
-	"net"
-
 	v0 "github.com/gaukas/watm/tinygo/v0"
 	v0net "github.com/gaukas/watm/tinygo/v0/net"
 )
@@ -13,7 +11,7 @@ var _ v0.WrappingTransport = (*ReverseWrappingTransport)(nil)
 type ReverseWrappingTransport struct {
 }
 
-func (rwt *ReverseWrappingTransport) Wrap(conn v0net.Conn) (net.Conn, error) {
+func (rwt *ReverseWrappingTransport) Wrap(conn v0net.Conn) (v0net.Conn, error) {
 	return &ReverseConn{conn}, conn.SetNonBlock(true) // must set non-block, otherwise will block on read and lose fairness
 }
 

@@ -7,6 +7,7 @@ import (
 	"net"
 	"syscall"
 
+	v0net "github.com/gaukas/watm/tinygo/v0/net"
 	"github.com/gaukas/watm/wasip1"
 )
 
@@ -27,24 +28,24 @@ var identityStrings = map[identity]string{
 	identity_relay:    "relay",
 }
 
-var sourceConn net.Conn // sourceConn is used to communicate between WASM and the host application or a dialing party (for relay only)
-var remoteConn net.Conn // remoteConn is used to communicate between WASM and a dialed remote destination (for dialer/relay) or a dialing party (for listener only)
-var cancelConn net.Conn // cancelConn is used to cancel the entire worker.
+var sourceConn v0net.Conn // sourceConn is used to communicate between WASM and the host application or a dialing party (for relay only)
+var remoteConn v0net.Conn // remoteConn is used to communicate between WASM and a dialed remote destination (for dialer/relay) or a dialing party (for listener only)
+var cancelConn v0net.Conn // cancelConn is used to cancel the entire worker.
 
-var pollFn func() int32 = unfairPoll // by default, use unfairPoll
+var workerFn func() int32 = unfairWorker // by default, use unfairWorker
 
-// PollingFairness sets the fairness of polling.
+// WorkerFairness sets the fairness of a worker.
 //
 // If sourceConn or remoteConn will not work in non-blocking mode,
 // it is highly recommended to set fair to true, otherwise it is most
 // likely that the worker will block on reading from a blocking
 // connection forever and therefore make no progress in the other
 // direction.
-func PollingFairness(fair bool) {
+func WorkerFairness(fair bool) {
 	if fair {
-		pollFn = fairPoll
+		workerFn = fairWorker
 	} else {
-		pollFn = unfairPoll
+		workerFn = unfairWorker
 	}
 }
 
@@ -55,18 +56,18 @@ func _water_worker() int32 {
 		return wasip1.EncodeWATERError(syscall.ENOTCONN) // socket not connected
 	}
 	log.Printf("worker: working as %s", identityStrings[workerIdentity])
-	return poll()
+	return worker()
 }
 
-func poll() int32 {
+func worker() int32 {
 	defer _import_host_defer()
 
 	if sourceConn == nil || remoteConn == nil || cancelConn == nil {
-		log.Println("worker: unfairPoll: sourceConn, remoteConn, or cancelConn is nil")
+		log.Println("worker: unfairWorker: sourceConn, remoteConn, or cancelConn is nil")
 		return wasip1.EncodeWATERError(syscall.EBADF) // bad file descriptor
 	}
 
-	return pollFn()
+	return workerFn()
 }
 
 // untilError executes the given function until non-nil error is returned
@@ -78,31 +79,56 @@ func untilError(f func() error) error {
 	return err
 }
 
-// unfairPoll works on all three connections with a priority order
+// unfairWorker works on all three connections with a priority order
 // of cancelConn > sourceConn > remoteConn.
 //
 // It keeps working on the current connection until it returns an error,
 // and if the error is EAGAIN, it switches to the next connection. If the
 // connection is not properly set to non-blocking mode, i.e., never returns
 // EAGAIN, this function will block forever and never work on a lower priority
-// connection. Thus it is called unfairPoll.
+// connection. Thus it is called unfairWorker.
 //
 // TODO: use poll_oneoff instead of busy polling
-func unfairPoll() int32 {
+func unfairWorker() int32 {
 	var readBuf []byte = make([]byte, 65536)
 	for {
-		// first priority: cancelConn
-		_, err := cancelConn.Read(readBuf)
+		pollFd := []pollFd{
+			{
+				fd:     uintptr(cancelConn.Fd()),
+				events: EventFdRead,
+			},
+			{
+				fd:     uintptr(sourceConn.Fd()),
+				events: EventFdRead,
+			},
+			{
+				fd:     uintptr(remoteConn.Fd()),
+				events: EventFdRead,
+			},
+		}
+
+		n, err := _poll(pollFd, -1)
+		if n == 0 { // TODO: re-evaluate the condition
+			if err == nil || errors.Is(err, syscall.EAGAIN) {
+				usleep(100) // wait 100us before retrying _poll
+				continue
+			}
+			log.Println("worker: unfairWorker: _poll:", err)
+			return int32(err.(syscall.Errno))
+		}
+
+		// 1st priority: cancelConn
+		_, err = cancelConn.Read(readBuf)
 		if !errors.Is(err, syscall.EAGAIN) {
 			if errors.Is(err, io.EOF) || err == nil {
-				log.Println("worker: unfairPoll: cancelConn is closed")
+				log.Println("worker: unfairWorker: cancelConn is closed")
 				return wasip1.EncodeWATERError(syscall.ECANCELED) // operation canceled
 			}
-			log.Println("worker: unfairPoll: cancelConn.Read:", err)
+			log.Println("worker: unfairWorker: cancelConn.Read:", err)
 			return wasip1.EncodeWATERError(syscall.EIO) // input/output error
 		}
 
-		// second priority: sourceConn
+		// 2nd priority: sourceConn
 		if err := untilError(func() error {
 			readN, readErr := sourceConn.Read(readBuf)
 			if readErr != nil {
@@ -111,26 +137,26 @@ func unfairPoll() int32 {
 
 			writeN, writeErr := remoteConn.Write(readBuf[:readN])
 			if writeErr != nil {
-				log.Println("worker: unfairPoll: remoteConn.Write:", writeErr)
+				log.Println("worker: unfairWorker: remoteConn.Write:", writeErr)
 				return syscall.EIO // input/output error, we cannot retry async write yet
 			}
 
 			if readN != writeN {
-				log.Println("worker: unfairPoll: readN != writeN")
+				log.Println("worker: unfairWorker: readN != writeN")
 				return syscall.EIO // input/output error
 			}
 
 			return nil
 		}); !errors.Is(err, syscall.EAGAIN) {
 			if errors.Is(err, io.EOF) {
-				log.Println("worker: unfairPoll: sourceConn is closed")
+				log.Println("worker: unfairWorker: sourceConn is closed")
 				return wasip1.EncodeWATERError(syscall.EPIPE) // broken pipe
 			}
-			log.Println("worker: unfairPoll: sourceConn.Read:", err)
+			log.Println("worker: unfairWorker: sourceConn.Read:", err)
 			return wasip1.EncodeWATERError(syscall.EIO) // input/output error
 		}
 
-		// third priority: remoteConn
+		// 3rd priority: remoteConn
 		if err := untilError(func() error {
 			readN, readErr := remoteConn.Read(readBuf)
 			if readErr != nil {
@@ -139,50 +165,75 @@ func unfairPoll() int32 {
 
 			writeN, writeErr := sourceConn.Write(readBuf[:readN])
 			if writeErr != nil {
-				log.Println("worker: unfairPoll: sourceConn.Write:", writeErr)
+				log.Println("worker: unfairWorker: sourceConn.Write:", writeErr)
 				return syscall.EIO // input/output error, we cannot retry async write yet
 			}
 
 			if readN != writeN {
-				log.Println("worker: unfairPoll: readN != writeN")
+				log.Println("worker: unfairWorker: readN != writeN")
 				return syscall.EIO // input/output error
 			}
 
 			return nil
 		}); !errors.Is(err, syscall.EAGAIN) {
 			if errors.Is(err, io.EOF) {
-				log.Println("worker: unfairPoll: remoteConn is closed")
+				log.Println("worker: unfairWorker: remoteConn is closed")
 				return wasip1.EncodeWATERError(syscall.EPIPE) // broken pipe
 			}
-			log.Println("worker: unfairPoll: remoteConn.Read:", err)
+			log.Println("worker: unfairWorker: remoteConn.Read:", err)
 			return wasip1.EncodeWATERError(syscall.EIO) // input/output error
 		}
 	}
 }
 
-// like unfairPoll, fairPoll also works on all three connections with a priority order
+// like unfairWorker, fairWorker also works on all three connections with a priority order
 // of cancelConn > sourceConn > remoteConn.
 //
-// But different from unfairPoll, fairPoll spend equal amount of turns on each connection
-// for calling Read. Therefore it has a better fairness than unfairPoll, which may still
+// But different from unfairWorker, fairWorker spend equal amount of turns on each connection
+// for calling Read. Therefore it has a better fairness than unfairWorker, which may still
 // make progress if one of the connection is not properly set to non-blocking mode.
 //
 // TODO: use poll_oneoff instead of busy polling
-func fairPoll() int32 {
+func fairWorker() int32 {
 	var readBuf []byte = make([]byte, 65536)
 	for {
-		// first priority: cancelConn
-		_, err := cancelConn.Read(readBuf)
+		pollFd := []pollFd{
+			{
+				fd:     uintptr(cancelConn.Fd()),
+				events: EventFdRead,
+			},
+			{
+				fd:     uintptr(sourceConn.Fd()),
+				events: EventFdRead,
+			},
+			{
+				fd:     uintptr(remoteConn.Fd()),
+				events: EventFdRead,
+			},
+		}
+
+		n, err := _poll(pollFd, -1)
+		if n == 0 { // TODO: re-evaluate the condition
+			if err == nil || errors.Is(err, syscall.EAGAIN) {
+				usleep(100) // wait 100us before retrying _poll
+				continue
+			}
+			log.Println("worker: unfairWorker: _poll:", err)
+			return int32(err.(syscall.Errno))
+		}
+
+		// 1st priority: cancelConn
+		_, err = cancelConn.Read(readBuf)
 		if !errors.Is(err, syscall.EAGAIN) {
 			if errors.Is(err, io.EOF) || err == nil {
-				log.Println("worker: unfairPoll: cancelConn is closed")
+				log.Println("worker: unfairWorker: cancelConn is closed")
 				return wasip1.EncodeWATERError(syscall.ECANCELED) // operation canceled
 			}
-			log.Println("worker: unfairPoll: cancelConn.Read:", err)
+			log.Println("worker: unfairWorker: cancelConn.Read:", err)
 			return wasip1.EncodeWATERError(syscall.EIO) // input/output error
 		}
 
-		// second priority: sourceConn -> remoteConn
+		// 2nd priority: sourceConn -> remoteConn
 		if err := copyOnce(
 			"remoteConn", // dstName
 			"sourceConn", // srcName
@@ -192,7 +243,7 @@ func fairPoll() int32 {
 			return wasip1.EncodeWATERError(err.(syscall.Errno))
 		}
 
-		// third priority: remoteConn -> sourceConn
+		// 3rd priority: remoteConn -> sourceConn
 		if err := copyOnce(
 			"sourceConn", // dstName
 			"remoteConn", // srcName

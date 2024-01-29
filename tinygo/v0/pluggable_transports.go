@@ -1,8 +1,6 @@
 package v0
 
 import (
-	"net"
-
 	v0net "github.com/gaukas/watm/tinygo/v0/net"
 )
 
@@ -20,7 +18,11 @@ type WrappingTransport interface {
 	// The input [v0net.Conn] is not by default non-blocking. It is
 	// the responsibility of the transport to make it non-blocking
 	// if required by calling [v0net.Conn.SetNonblock].
-	Wrap(v0net.Conn) (net.Conn, error)
+	//
+	// For the returned [v0net.Conn], it is highly recommended to
+	// pass all funtions other than [v0net.Conn.Read] and [v0net.Conn.Write]
+	// to the input [v0net.Conn] to reduce the complexity.
+	Wrap(v0net.Conn) (v0net.Conn, error)
 }
 
 // DialingTransport is a transport type that can be used to dial
@@ -43,11 +45,15 @@ type DialingTransport interface {
 	// provides high-level application layer protocol over the
 	// dialed connection.
 	//
-	// The transport SHOULD provide non-blocking [net.Conn.Read]
-	// operation on the returned [net.Conn] unless it is required
+	// The transport SHOULD provide non-blocking [v0net.Conn.Read]
+	// operation on the returned [v0net.Conn] unless it is required
 	// to block otherwise, e.g., by application protocol specifications
 	// such as during a TLS handshake.
-	Dial(network, address string) (net.Conn, error)
+	//
+	// For the returned [v0net.Conn], it is highly recommended to
+	// pass all funtions other than [v0net.Conn.Read] and [v0net.Conn.Write]
+	// to the [v0net.Conn] created by the underlying dialer function.
+	Dial(network, address string) (v0net.Conn, error)
 }
 
 // ListeningTransport is a transport type that can be used to
@@ -67,11 +73,15 @@ type ListeningTransport interface {
 	// [net.Conn] that provides high-level application layer
 	// protocol over the accepted connection.
 	//
-	// The transport SHOULD provide non-blocking [net.Conn.Read]
-	// operation on the returned [net.Conn] unless it is required
+	// The transport SHOULD provide non-blocking [v0net.Conn.Read]
+	// operation on the returned [v0net.Conn] unless it is required
 	// to block otherwise, e.g., by application protocol specifications
 	// such as during a TLS handshake.
-	Accept() (net.Conn, error)
+	//
+	// For the returned [v0net.Conn], it is highly recommended to
+	// pass all funtions other than [v0net.Conn.Read] and [v0net.Conn.Write]
+	// to the [v0net.Conn] created by the underlying listener.
+	Accept() (v0net.Conn, error)
 }
 
 type ConfigurableTransport interface {
