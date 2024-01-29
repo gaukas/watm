@@ -2,6 +2,7 @@ package v0
 
 import (
 	"errors"
+	"fmt"
 	"io"
 	"log"
 	"net"
@@ -63,7 +64,7 @@ func worker() int32 {
 	defer _import_host_defer()
 
 	if sourceConn == nil || remoteConn == nil || cancelConn == nil {
-		log.Println("worker: unfairWorker: sourceConn, remoteConn, or cancelConn is nil")
+		log.Println("worker: worker: sourceConn, remoteConn, or cancelConn is nil")
 		return wasip1.EncodeWATERError(syscall.EBADF) // bad file descriptor
 	}
 
