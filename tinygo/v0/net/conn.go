@@ -50,6 +50,9 @@ func (c *TCPConn) Read(b []byte) (n int, err error) {
 			if n == 0 && err == nil {
 				err = io.EOF
 			}
+			if n < 0 && err != nil {
+				n = 0
+			}
 			return n, err
 		})
 	} else {
@@ -60,6 +63,9 @@ func (c *TCPConn) Read(b []byte) (n int, err error) {
 				n, err := syscall.Read(int(fd), b)
 				if n == 0 && err == nil {
 					err = io.EOF
+				}
+				if n < 0 && err != nil {
+					n = 0
 				}
 				return n, err
 			}); errors.Is(err, syscall.EAGAIN) {
