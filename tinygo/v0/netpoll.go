@@ -5,6 +5,7 @@
 package v0
 
 import (
+	"fmt"
 	"syscall"
 	"unsafe"
 )
@@ -81,7 +82,7 @@ func _poll(fds []pollFd, maxTimeout int64) (nevents int32, err error) {
 			eventtype := sub.u.eventtype()
 			*eventtype = eventtypeFdWrite
 		} else {
-			panic("invalid event type: " + string(fd.events))
+			panic(fmt.Sprintf("invalid event type: %d", fd.events))
 		}
 		subs = append(subs, sub)
 	}
