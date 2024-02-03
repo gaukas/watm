@@ -45,7 +45,7 @@ jobs:
         tinygo-version: '0.30.0'
     - name: Build
       run: |
-        tinygo build -o ${{ matrix.examples }}.wasm -target wasi ./tinygo/v0/examples/${{ matrix.examples }}/
+        tinygo build -o ${{ matrix.examples }}.wasm -target wasi -tags=purego ./tinygo/v0/examples/${{ matrix.examples }}/
         ls -l
         
   
