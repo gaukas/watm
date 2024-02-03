@@ -1,0 +1,51 @@
+name: "Go"
+
+on:
+  push:
+    branches: [ "master" ]
+  pull_request:
+    branches: [ "master" ]
+
+env:
+  CGO_ENABLED: 0
+
+jobs:
+  go_test_all:
+    name: "Run go test on all packages"
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        go: [ "1.20.x", "1.21.x" ] # we support the latest 2 stable versions of Go
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version: ${{ matrix.go }}
+      - run: go version
+      - name: Build and Test
+        run:  |
+          go build -v ./...
+          go test -v ./...
+  
+  tinygo_build:
+    name: "Build TinyGo"
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: true
+      matrix:
+        go: [ "1.20.x", "1.21.x" ] # we support the latest 2 stable versions of Go
+        examples: [ "plain", "reverse", "utls" ] # Add more examples here, corresponding directories must exist under tinygo/v0/examples
+    steps:
+    - uses: actions/checkout@v4
+    - uses: actions/setup-go@v5
+      with:
+        go-version: ${{ matrix.go }}
+    - uses: acifani/setup-tinygo@v2
+      with:
+        tinygo-version: '0.30.0'
+    - name: Build
+      run: |
+        tinygo build -o ${{ matrix.examples }}.wasm -target wasi ./tinygo/v0/examples/${{ matrix.examples }}/
+        ls -l
+        
+  
