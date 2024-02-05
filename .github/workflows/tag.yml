@@ -1,4 +1,4 @@
-name: "Build example WATM on new tags"
+name: "Release WATM"
 
 # Build only on new tags
 on:

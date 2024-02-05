@@ -1,8 +1,6 @@
-name: "Go"
+name: "Test and Build"
 
 on:
-  push:
-    branches: [ "master" ]
   pull_request:
     branches: [ "master" ]
 
@@ -47,5 +45,3 @@ jobs:
       run: |
         tinygo build -o ${{ matrix.examples }}.wasm -target wasi -tags=purego ./tinygo/v0/examples/${{ matrix.examples }}/
         ls -l
-        
-  

@@ -1,0 +1,28 @@
+name: "Test"
+
+on:
+  push:
+    branches: [ "master" ]
+    # branches:
+    #     - "**"
+
+env:
+  CGO_ENABLED: 0
+
+jobs:
+  go_test_all:
+    name: "Run go test on all packages"
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        go: [ "1.20.x", "1.21.x" ] # we support the latest 2 stable versions of Go
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version: ${{ matrix.go }}
+      - run: go version
+      - name: Build and Test
+        run:  |
+          go build -v ./...
+          go test -v ./...
