@@ -34,7 +34,7 @@ jobs:
       uses: actions/upload-artifact@v4
       with:
         name: tinygo_v0_${{ matrix.examples }}.wasm
-        path: tinygo_v0_${{ matrix.examples }}.wasm
+        path: ${{ matrix.examples }}.wasm
         retention-days: 1
 
   release:
