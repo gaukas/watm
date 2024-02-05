@@ -33,7 +33,7 @@ jobs:
       run: tinygo build -o ${{ matrix.watm.name }}.wasm 
         -target=wasi -no-debug -scheduler=${{ matrix.watm.scheduler }} 
         -gc=${{ matrix.watm.gc }} -tags=${{ matrix.watm.tags }} 
-        ./tinygo/v0/examples/${{ matrix.examples }}/
+        ./tinygo/v0/examples/${{ matrix.watm.name }}/
     - name: Upload Artifacts
       uses: actions/upload-artifact@v4
       with:
