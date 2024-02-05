@@ -16,7 +16,11 @@ jobs:
     strategy:
       fail-fast: true
       matrix:
-        examples: [ "plain", "reverse", "utls" ] # Add more examples here, corresponding directories must exist under tinygo/v0/examples
+        watm: [ 
+          { name: "plain", scheduler: "none", gc: "leaking", tags: "purego" }, 
+          { name: "reverse", scheduler: "none", gc: "leaking", tags: "purego" }, 
+          { name: "utls", scheduler: "asyncify", gc: "leaking", tags: "purego" }
+        ]
     steps:
     - uses: actions/checkout@v4
     - uses: actions/setup-go@v5
@@ -26,15 +30,15 @@ jobs:
       with:
         tinygo-version: '0.30.0'
     - name: Build WASI Artifacts
-      run: tinygo build -o ${{ matrix.examples }}.wasm 
-        -target=wasi -no-debug -scheduler=none -gc=leaking 
-        -tags=purego 
+      run: tinygo build -o ${{ matrix.watm.name }}.wasm 
+        -target=wasi -no-debug -scheduler=${{ matrix.watm.scheduler }} 
+        -gc=${{ matrix.watm.gc }} -tags=${{ matrix.watm.tags }} 
         ./tinygo/v0/examples/${{ matrix.examples }}/
     - name: Upload Artifacts
       uses: actions/upload-artifact@v4
       with:
-        name: tinygo_v0_${{ matrix.examples }}.wasm
-        path: ${{ matrix.examples }}.wasm
+        name: tinygo_v0_${{ matrix.watm.name }}.wasm
+        path: ${{ matrix.watm.name }}.wasm
         retention-days: 1
 
   release:
