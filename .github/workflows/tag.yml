@@ -30,15 +30,15 @@ jobs:
       with:
         tinygo-version: '0.30.0'
     - name: Build WASI Artifacts
-      run: tinygo build -o ${{ matrix.watm.name }}.wasm 
+      run: tinygo build -o tinygo_v0_${{ matrix.watm.name }}.wasm 
         -target=wasi -no-debug -scheduler=${{ matrix.watm.scheduler }} 
         -gc=${{ matrix.watm.gc }} -tags=${{ matrix.watm.tags }} 
         ./tinygo/v0/examples/${{ matrix.watm.name }}/
     - name: Upload Artifacts
       uses: actions/upload-artifact@v4
       with:
-        name: tinygo_v0_${{ matrix.watm.name }}.wasm
-        path: ${{ matrix.watm.name }}.wasm
+        name: tinygo_v0_${{ matrix.watm.name }}
+        path: tinygo_v0_${{ matrix.watm.name }}.wasm
         retention-days: 1
 
   release:
@@ -59,4 +59,4 @@ jobs:
         with:
           name: ${{ github.ref_name }}
           files: |
-            release-${{ github.ref_name }}/*.wasm
+            release-${{ github.ref_name }}/*/*.wasm
