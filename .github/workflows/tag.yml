@@ -11,7 +11,7 @@ env:
 
 jobs:
   tinygo_v0:
-    name: "Build TinyGo Examples for WATM v0"
+    name: "Build tinygo_v0_${{ matrix.watm.name }}.wasm"
     runs-on: ubuntu-latest
     strategy:
       fail-fast: true
