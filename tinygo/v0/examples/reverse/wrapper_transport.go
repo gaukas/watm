@@ -1,9 +1,13 @@
 package main
 
 import (
+	"io"
+
 	v0 "github.com/gaukas/watm/tinygo/v0"
 	v0net "github.com/gaukas/watm/tinygo/v0/net"
 )
+
+var dupBuf []byte = make([]byte, 16384) // 16k buffer for reversing
 
 // type guard: ReverseWrappingTransport must implement [v0.WrappingTransport].
 var _ v0.WrappingTransport = (*ReverseWrappingTransport)(nil)
@@ -20,8 +24,15 @@ type ReverseConn struct {
 }
 
 func (rc *ReverseConn) Read(b []byte) (n int, err error) {
-	var dupBuf []byte = make([]byte, len(b))
 	n, err = rc.Conn.Read(dupBuf)
+	if err != nil {
+		return 0, err
+	}
+
+	if n > len(b) {
+		err = io.ErrShortBuffer
+		n = len(b)
+	}
 
 	// reverse all bytes read successfully so far
 	for i := 0; i < n; i++ {
@@ -32,8 +43,6 @@ func (rc *ReverseConn) Read(b []byte) (n int, err error) {
 }
 
 func (rc *ReverseConn) Write(b []byte) (n int, err error) {
-	var dupBuf []byte = make([]byte, len(b))
-
 	// reverse the bytes to be written
 	for i := 0; i < len(b); i++ {
 		dupBuf[i] = b[len(b)-i-1]

@@ -1,6 +1,7 @@
 package v0
 
 import (
+	"bytes"
 	"errors"
 	"log"
 	"os"
@@ -66,15 +67,14 @@ func readConfig() (config []byte, err error) {
 	}
 
 	// read the config file
-	var fileContent []byte = make([]byte, 65536)
-	n, err := file.Read(fileContent)
+	buf := new(bytes.Buffer)
+	_, err = buf.ReadFrom(file)
 	if err != nil {
-		log.Println("readConfig: file.Read:", err)
+		log.Println("readConfig: (*bytes.Buffer).ReadFrom:", err)
 		return nil, syscall.EIO
 	}
 
-	config = make([]byte, n)
-	copy(config, fileContent[:n])
+	config = buf.Bytes()
 
 	// close the file
 	if err := file.Close(); err != nil {

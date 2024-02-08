@@ -34,6 +34,8 @@ var cancelConn v0net.Conn // cancelConn is used to cancel the entire worker.
 
 var workerFn func() int32 = unfairWorker // by default, use unfairWorker
 
+var readBuf []byte = make([]byte, 16384) // 16k buffer for reading
+
 // WorkerFairness sets the fairness of a worker.
 //
 // If sourceConn or remoteConn will not work in non-blocking mode,
@@ -90,7 +92,6 @@ func untilError(f func() error) error {
 //
 // TODO: use poll_oneoff instead of busy polling
 func unfairWorker() int32 {
-	var readBuf []byte = make([]byte, 65536)
 	for {
 		pollFd := []pollFd{
 			{
@@ -195,7 +196,6 @@ func unfairWorker() int32 {
 //
 // TODO: use poll_oneoff instead of busy polling
 func fairWorker() int32 {
-	var readBuf []byte = make([]byte, 65536)
 	for {
 		pollFd := []pollFd{
 			{
@@ -256,8 +256,8 @@ func fairWorker() int32 {
 }
 
 func copyOnce(dstName, srcName string, dst, src net.Conn, buf []byte) error {
-	if buf == nil {
-		buf = make([]byte, 65536)
+	if len(buf) == 0 {
+		buf = make([]byte, 16384) // 16k buffer for reading
 	}
 
 	readN, readErr := src.Read(buf)
