@@ -1,4 +1,4 @@
-name: "Test and Build"
+name: "Pull Request Test"
 
 on:
   pull_request:
@@ -9,11 +9,11 @@ env:
 
 jobs:
   go_test_all:
-    name: "Run go test on all packages"
+    name: "go build && go test"
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        go: [ "1.20.x", "1.21.x" ] # we support the latest 2 stable versions of Go
+        go: [ "1.21.x", "1.22.x" ] # we support the latest 2 stable versions of Go
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-go@v5
@@ -25,13 +25,13 @@ jobs:
           go build -v ./...
           go test -v ./...
   
-  tinygo_build:
-    name: "Build TinyGo"
+  tinygo_build_v0:
+    name: "Build tinygo example ${{ matrix.examples }}"
     runs-on: ubuntu-latest
     strategy:
       fail-fast: true
       matrix:
-        go: [ "1.20.x", "1.21.x" ] # we support the latest 2 stable versions of Go
+        go: [ "1.20.x", "1.21.x" ] # we support the latest 2 stable versions of Go. TODO: bump to 1.22.x once tinygo supports it.
         examples: [ "plain", "reverse", "utls" ] # Add more examples here, corresponding directories must exist under tinygo/v0/examples
     steps:
     - uses: actions/checkout@v4
@@ -43,5 +43,4 @@ jobs:
         tinygo-version: '0.30.0'
     - name: Build
       run: |
-        tinygo build -o ${{ matrix.examples }}.wasm -target wasi -tags=purego ./tinygo/v0/examples/${{ matrix.examples }}/
-        ls -l
+        tinygo build -o ${{ matrix.examples }}.wasm -target=wasi -tags=purego ./tinygo/v0/examples/${{ matrix.examples }}/

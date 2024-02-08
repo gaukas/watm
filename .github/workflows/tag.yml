@@ -10,16 +10,16 @@ env:
   CGO_ENABLED: 0
 
 jobs:
-  tinygo_v0:
+  tinygo_v0_artifacts:
     name: "Build tinygo_v0_${{ matrix.watm.name }}.wasm"
     runs-on: ubuntu-latest
     strategy:
       fail-fast: true
       matrix:
         watm: [ 
-          { name: "plain", scheduler: "none", gc: "leaking", tags: "purego" }, 
-          { name: "reverse", scheduler: "none", gc: "leaking", tags: "purego" }, 
-          { name: "utls", scheduler: "asyncify", gc: "leaking", tags: "purego" }
+          { name: "plain", scheduler: "none", gc: "conservative", tags: "purego" }, 
+          { name: "reverse", scheduler: "none", gc: "conservative", tags: "purego" }, 
+          { name: "utls", scheduler: "asyncify", gc: "conservative", tags: "purego" }
         ]
     steps:
     - uses: actions/checkout@v4
@@ -29,7 +29,7 @@ jobs:
     - uses: acifani/setup-tinygo@v2
       with:
         tinygo-version: '0.30.0'
-    - name: Build WASI Artifacts
+    - name: Build WATM Artifacts
       run: tinygo build -o tinygo_v0_${{ matrix.watm.name }}.wasm 
         -target=wasi -no-debug -scheduler=${{ matrix.watm.scheduler }} 
         -gc=${{ matrix.watm.gc }} -tags=${{ matrix.watm.tags }} 
@@ -42,7 +42,7 @@ jobs:
         retention-days: 1
 
   release:
-    needs: tinygo_v0
+    needs: tinygo_v0_artifacts
     name: "Release WATM Examples for ${{ github.ref_name }}"
     runs-on: ubuntu-latest
     steps: 
