@@ -8,4 +8,6 @@ This repository contains tools for building WebAssembly Transport Modules (WATMs
 
 ## Deprecated
 
-This repository has been merged into [water](https://github.com/refraction-networking/water) as [water/watm](https://github.com/refraction-networking/water/tree/master/watm).
+~This repository has been merged into [water](https://github.com/refraction-networking/water) as [water/watm](https://github.com/refraction-networking/water/tree/master/watm).~
+
+This repository has been hard-forked and maintained separately as [refraction-networking/watm](https://github.com/refraction-networking/watm).
